@@ -288,7 +288,7 @@ footer b { color: var(--ink); font-weight: 500; }
 <body>
 <div class="app">
   <header>
-    <h1><span class="glyph">◒</span> Bayesian Tracer<span class="ver">v1.2.1</span></h1>
+    <h1><span class="glyph">◒</span> Bayesian Tracer<span class="ver">v1.3.0</span></h1>
     <span class="tagline">raster&nbsp;→&nbsp;vector, by inverting anti-aliased rasterization</span>
     <span class="cite">after <a href="https://www.semanticscholar.org/paper/a1336e0f16e8099ba687ff361b98c184aa160edd" target="_blank" rel="noopener">Diebel, <i>Bayesian Image Vectorization</i>, Stanford 2008</a></span>
     <a class="gh" href="https://github.com/shihanqu/bayesian-tracer" target="_blank" rel="noopener" title="Star on GitHub">
@@ -302,7 +302,7 @@ footer b { color: var(--ink); font-weight: 500; }
       <div class="ctl-group">
         <h2>01 · Input</h2>
         <div class="drop" id="drop" tabindex="0" role="button" aria-label="Load an image">
-          <strong>Choose an image</strong><br>or drop / paste one here
+          <strong>Choose an image</strong><br>or drop / paste one anywhere
         </div>
         <input type="file" id="file" accept="image/*" hidden>
         <div class="demos">
@@ -1685,11 +1685,12 @@ function zapAt(x, y) {
 let segDrawing = false;
 function segDown(e) {
   if (!state.result) return;
+  if (e.button !== 0) return; // middle button bubbles up to the pane's pan handler
   e.preventDefault();
   const [x, y] = segCoords(e);
   if (state.tool === 'zap') { zapAt(x, y); return; }
   segDrawing = true;
-  segCanvas.setPointerCapture(e.pointerId);
+  try { segCanvas.setPointerCapture(e.pointerId); } catch (err) {}
   strokePatch = { idx: [], old: [], seen: new Set() };
   paintAt(x, y);
 }
@@ -1853,9 +1854,26 @@ const drop = $('#drop');
 drop.addEventListener('click', () => $('#file').click());
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#file').click(); } });
 $('#file').addEventListener('change', e => loadImageFile(e.target.files[0]));
-['dragover', 'dragenter'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
-['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
-drop.addEventListener('drop', e => loadImageFile(e.dataTransfer.files[0]));
+
+// images can be dropped anywhere on the page, not just on the dropzone
+const dragHasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+let dragDepth = 0;
+window.addEventListener('dragenter', e => {
+  if (!dragHasFiles(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  drop.classList.add('over');
+});
+window.addEventListener('dragleave', () => {
+  if (--dragDepth <= 0) { dragDepth = 0; drop.classList.remove('over'); }
+});
+window.addEventListener('dragover', e => { if (dragHasFiles(e)) e.preventDefault(); });
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0;
+  drop.classList.remove('over');
+  if (e.dataTransfer.files.length) loadImageFile(e.dataTransfer.files[0]);
+});
 window.addEventListener('paste', e => {
   for (const item of e.clipboardData.items) {
     if (item.type.startsWith('image/')) { loadImageFile(item.getAsFile()); break; }
@@ -1921,6 +1939,33 @@ $('#segApply').addEventListener('click', () => {
 const srcView = $('#srcView'), vecView = $('#vecView');
 srcView.addEventListener('scroll', () => syncScroll(srcView, vecView));
 vecView.addEventListener('scroll', () => syncScroll(vecView, srcView));
+
+// middle-mouse drag pans a zoomed pane (the wheel scrolls it natively);
+// scroll sync mirrors the pan to the other pane
+for (const view of [srcView, vecView]) {
+  // stop the browser's own middle-click autoscroll so the drag wins
+  view.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });
+  view.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
+  view.addEventListener('pointerdown', e => {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    const startL = view.scrollLeft, startT = view.scrollTop;
+    try { view.setPointerCapture(e.pointerId); } catch (err) {}
+    view.style.cursor = 'grabbing';
+    const move = ev => {
+      view.scrollLeft = startL - (ev.clientX - startX);
+      view.scrollTop = startT - (ev.clientY - startY);
+    };
+    const up = () => {
+      view.removeEventListener('pointermove', move);
+      view.style.cursor = '';
+    };
+    view.addEventListener('pointermove', move);
+    view.addEventListener('pointerup', up, { once: true });
+    view.addEventListener('pointercancel', up, { once: true });
+  });
+}
 
 $('#expSvg').addEventListener('click', () => state.result && saveFile('vectorized.svg', state.result.svg, true));
 $('#expEps').addEventListener('click', () => state.result &&

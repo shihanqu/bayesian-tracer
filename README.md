@@ -15,7 +15,7 @@ The tracer reimplements the vectorization pipeline from James Diebel's 2008 Stan
 
 ## What it does
 
-Drop in a PNG, JPG, GIF, or BMP and it produces layered vector shapes you can export as SVG, EPS, PDF, AI, or PNG. The pipeline:
+Drop in a PNG, JPG, WebP, GIF, or BMP (anywhere on the page, or paste from the clipboard) and it produces layered vector shapes you can export as SVG, EPS, PDF, AI, or PNG. The pipeline:
 
 1. k-means palette estimation (automatic, fixed count, or a custom palette you edit by hand)
 2. Potts-model relabeling with iterated conditional modes, which absorbs anti-aliased edge pixels into their neighboring regions
@@ -30,6 +30,8 @@ Drop in a PNG, JPG, GIF, or BMP and it produces layered vector shapes you can ex
 The app classifies each image on load (photograph, artwork with blended edges, or artwork with sharp edges) and applies a matching preset. The sliders underneath stay live, so a preset is a starting point rather than a mode.
 
 If the segmentation gets something wrong, switch to the Segmentation tab and fix the pixels directly: paint with any palette color, zap a stray segment into its largest neighbor, or paint with the transparent swatch to remove a background. Then hit Re-vectorize. Source transparency is kept through to the exports.
+
+When zoomed in, the mouse wheel scrolls a pane and dragging with the middle mouse button pans it. The two panes stay in sync either way.
 
 ## Running locally
 
