@@ -288,7 +288,7 @@ footer b { color: var(--ink); font-weight: 500; }
 <body>
 <div class="app">
   <header>
-    <h1><span class="glyph">◒</span> Bayesian Tracer<span class="ver">v1.2.0</span></h1>
+    <h1><span class="glyph">◒</span> Bayesian Tracer<span class="ver">v1.2.1</span></h1>
     <span class="tagline">raster&nbsp;→&nbsp;vector, by inverting anti-aliased rasterization</span>
     <span class="cite">after <a href="https://www.semanticscholar.org/paper/a1336e0f16e8099ba687ff361b98c184aa160edd" target="_blank" rel="noopener">Diebel, <i>Bayesian Image Vectorization</i>, Stanford 2008</a></span>
     <a class="gh" href="https://github.com/shihanqu/bayesian-tracer" target="_blank" rel="noopener" title="Star on GitHub">
@@ -1282,12 +1282,26 @@ async function vectorize(imgData, params, setStage, preset) {
     const loops = traceRegionLoops(comp, w, h, id, starts[id], opts);
     if (!loops.length) continue;
     const fitted = [];
-    let net = 0;
+    let net = 0, nSegs = 0;
     for (const lp of loops) {
       const segs = fitRegionOutline(lp.pts, params);
-      if (segs) { fitted.push(segs); net += lp.signedArea; segCount += segs.length; }
+      if (segs) { fitted.push(segs); net += lp.signedArea; nSegs += segs.length; }
     }
-    if (fitted.length) shapes.push({ label: finals[id].label, loops: fitted, area: Math.abs(net) });
+    if (!fitted.length) continue;
+    // A one-pixel-wide region can collapse to a hairline once smoothing and
+    // sub-pixel edge placement pull its two sides together. Its fill then
+    // covers nothing and only the seam stroke shows, as a stray line across
+    // the artwork, so drop it and let the region underneath show through.
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const segs of fitted) for (const b of segs) for (const p of b) {
+      if (p[0] < minX) minX = p[0];
+      if (p[0] > maxX) maxX = p[0];
+      if (p[1] < minY) minY = p[1];
+      if (p[1] > maxY) maxY = p[1];
+    }
+    if (Math.min(maxX - minX, maxY - minY) < 0.3) continue;
+    segCount += nSegs;
+    shapes.push({ label: finals[id].label, loops: fitted, area: Math.abs(net) });
   }
   shapes.sort((a, b) => b.area - a.area);
 
@@ -1945,7 +1959,14 @@ fetch('https://api.github.com/repos/shihanqu/bayesian-tracer')
 renderPalEdit();
 refreshOutputs();
 applyPresetChips();
-loadCanvas(demoCanvas('badge'));
+
+// the badge demo draws text, so wait for the webfont or the first trace runs
+// against a fallback face and produces a different segmentation each load
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => loadCanvas(demoCanvas('badge')));
+} else {
+  loadCanvas(demoCanvas('badge'));
+}
 </script>
 </body>
 </html>

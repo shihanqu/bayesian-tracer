@@ -1,8 +1,15 @@
 # Bayesian Tracer
 
-A bitmap-to-vector converter that runs entirely in the browser. It's a single HTML file with no dependencies, and images never leave your machine.
+Turn bitmap images into vector art, entirely in your browser. It's a single HTML file with no dependencies, and your images never leave your machine.
 
-Try it: https://shihanqu.github.io/bayesian-tracer/
+## ▶ [Open the live app](https://shihanqu.github.io/bayesian-tracer/)
+
+<a href="https://shihanqu.github.io/bayesian-tracer/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+    <img src="docs/screenshot-light.png" alt="The app tracing a raster badge into vector shapes, original on the left and vector result on the right">
+  </picture>
+</a>
 
 The tracer reimplements the vectorization pipeline from James Diebel's 2008 Stanford thesis, [*Bayesian Image Vectorization: The Probabilistic Inversion of Vector Image Rasterization*](https://www.semanticscholar.org/paper/a1336e0f16e8099ba687ff361b98c184aa160edd), the research that became Vector Magic. The core idea is that anti-aliasing is not noise. A blended edge pixel tells you where the true edge sits inside that pixel, so the tracer reads blend fractions to place boundaries at sub-pixel accuracy instead of snapping them to the pixel grid.
 
