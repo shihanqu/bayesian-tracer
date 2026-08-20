@@ -1416,7 +1416,7 @@ function loadCanvas(cv) {
   state.editedLabels = null; state.undoStack = [];
   $('#srcDims').textContent = `${tw} × ${th}${scale < 1 ? ' (scaled)' : ''}`;
   $('#srcView').innerHTML = `<div class="holder"><img id="srcImg" src="${state.dataUrl}" width="${tw}" alt="original"></div>`;
-  setTimeout(fitZoom, 60);
+  setTimeout(() => fitZoom(0), 60);
 
   // fully automatic mode: classify the image, apply the matching preset
   state.ptype = analyzeImage(state.imgData);
@@ -1696,9 +1696,14 @@ function applyZoom() {
     segCanvas.style.width = Math.max(1, Math.round(state.result.w * z)) + 'px';
   }
 }
-function fitZoom() {
+function fitZoom(retry) {
   if (!state.imgData) return;
   const pane = $('#srcView');
+  // during the first layout the pane can briefly report a tiny size
+  if ((pane.clientWidth < 120 || pane.clientHeight < 120) && (retry || 0) < 20) {
+    setTimeout(() => fitZoom((retry || 0) + 1), 150);
+    return;
+  }
   const z = Math.min((pane.clientWidth - 48) / state.imgData.width,
                      (pane.clientHeight - 48) / state.imgData.height);
   state.zoom = Math.min(8, Math.max(0.1, z));
